@@ -1,0 +1,33 @@
+version: 2
+jobs:
+  build:
+    machine: true
+    steps:
+      - checkout
+      - run: |
+          echo "$DOCKER_PASS" | docker login docker-registry.vicoders.com --username $DOCKER_USER --password-stdin
+
+      - run: docker build -t docker-registry.vicoders.com/$CIRCLE_PROJECT_REPONAME:$CIRCLE_BRANCH .
+
+      - run: docker push docker-registry.vicoders.com/$CIRCLE_PROJECT_REPONAME:$CIRCLE_BRANCH
+
+      - add_ssh_keys:
+          fingerprints:
+            - "$SERVER_FINGERPRINT"
+      - run:
+          name: Setup
+          command: |
+            chmod 755 .circleci/deploy.sh
+            ssh-keyscan $SERVER_IP >> ~/.ssh/know_hosts
+      - run:
+          name: Deploy
+          command: .circleci/deploy.sh
+workflows:
+  version: 2
+  build:
+    jobs:
+      - build:
+          filters:
+            branches:
+              only:
+                - production
